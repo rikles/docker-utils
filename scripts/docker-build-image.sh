@@ -1,0 +1,391 @@
+#!/bin/bash
+#-------------------------------------------------------------------------------------------------------------
+# Copyright (c) 2016 Loïc Guibert <lfdummy-devel@yahoo.fr>
+#-------------------------------------------------------------------------------------------------------------
+# This file is part of docker-utils.
+#
+# docker-utils is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#-------------------------------------------------------------------------------------------------------------
+# Object :
+#   Script that help user in the build/tag docker image process.
+#
+#   It extracts image name/version from special labels in the Dockerfile :
+#
+#       LABEL \
+#           image_name="myRepo/myUser/myImage" \
+#           version="1.0"
+#
+#-------------------------------------------------------------------------------------------------------------
+__script_name=$(basename "$0")
+__script_root=$(readlink -f "$0")
+__script_root=$(dirname "${__script_root}")
+
+__scripts_lib_base=$(readlink -f "${__script_root}/lib")
+
+
+
+#-------------------------------------------------------------------------------------------------------------
+# Libs
+#-------------------------------------------------------------------------------------------------------------
+source "${__scripts_lib_base}/functions.sh"
+
+
+
+#-------------------------------------------------------------------------------------------------------------
+# Global constants
+#-------------------------------------------------------------------------------------------------------------
+glob_SEP_LEVEL1="=================================================="
+glob_SEP_LEVEL2="------------------------------"
+glob_INFO_RUNNING_CMD="RUNNING>"
+
+
+
+#-------------------------------------------------------------------------------------------------------------
+# Global variables
+#-------------------------------------------------------------------------------------------------------------
+glob_dockerfile_dir=""
+glob_do_info_only=0
+glob_do_remove_image_current=0
+glob_do_remove_image_latest=0
+glob_do_replace_tag_latest=0
+glob_image_name=""
+glob_image_version=""
+glob_image_id=""
+glob_image_latest_id=""
+
+
+
+#-------------------------------------------------------------------------------------------------------------
+# Init
+#-------------------------------------------------------------------------------------------------------------
+trap "finalize" EXIT
+
+
+
+
+# ============================================================================================================
+#   FUNCTIONS
+# ============================================================================================================
+
+#-------------------------------------------------------------------------------------------------------------
+# Function finalize
+#-------------------------------------------------------------------------------------------------------------
+function finalize {
+    print_sep "${glob_SEP_LEVEL1}"
+}
+
+
+
+#-------------------------------------------------------------------------------------------------------------
+# Fonction usage
+#-------------------------------------------------------------------------------------------------------------
+function usage {
+    cat <<EOF_STR
+Objet : Script d'aide à la construction d'image Docker
+
+Usage :
+    ${SCRIPT_NAME} [OPTIONS] <cheminRepDockerfile>
+    
+
+Paramètres :
+    <cheminRepDockerfile> : Chemin vers le répertoire contenant le fichier Dockerfile à utiliser
+
+Options :
+    -h , --help     : affiche cette aide
+    
+    --info          : affiche les informations concernant l'image à construire et les images installées
+           
+    -r, --replace-latest-tag    : Remplace le tag 'latest' si la construction se termine avec succès
+
+    -c, --remove-current-first  : Supprime l'ancienne image de cette version
+    -l, --remove-latest-first   : Supprime l'ancienne image 'latest'
+    -A, --remove-all-first      : Supprime 
+                                    - l'ancienne image de cette version
+                                    - l'ancienne image 'latest'
+EOF_STR
+}
+
+
+
+
+#-------------------------------------------------------------------------------------------------------------
+# Function : readDockerfile
+#-------------------------------------------------------------------------------------------------------------
+function readDockerfile {
+    # ===== Test de awk
+    TEST_AWK=$(echo OKtest | awk '{ out = gensub(/(.*)test/, "test_\\1", "g", $1); print out }' -)
+    if [ $? -ne 0 -o "${TEST_AWK}" != "test_OK" ]; then
+        print_error "Votre version de awk ne prend par en charge la fonction :" "gensub" \
+                    "    -> Vous pouvez par exemple installer : gawk"
+    fi
+    
+    # ===== Test si le fichier Dockerfile existe
+    if [ ! -f Dockerfile ]; then
+        print_error "Le fichier Dockerfile est introuvable !" "" "${glob_dockerfile_dir}"
+    fi
+
+    # ===== Récupération des infos dans le fichier Dockerfile
+    glob_image_name=$(awk '/LABEL/ { t = 1 } BEGIN{FS="="} t == 1 && $1~/image_name/ { out = gensub(/"(.*)".*/, "\\1", "g", $2); print out }' Dockerfile)
+    glob_image_version=$(awk '/LABEL/ { t = 1 } BEGIN{FS="="} t == 1 && $1~/version/ { out = gensub(/"(.*)".*/, "\\1", "g", $2); print out }' Dockerfile)
+    
+    if [ -z "${glob_image_name}" -o -z "${glob_image_version}" ]; then
+        print_error "Votre fichier Dockerfile ne contient pas les labels :" "image_name, version"
+        exit 1
+    fi
+}
+
+
+
+
+#-------------------------------------------------------------------------------------------------------------
+# Function : printImageToBuildInfo
+#-------------------------------------------------------------------------------------------------------------
+function printImageToBuildInfo {
+    print_sep "${glob_SEP_LEVEL2}"
+    print_info "Image à construire :" "${glob_image_name}:${glob_image_version}"
+    print_info "Nom :" "${glob_image_name}"
+    print_info "Version :" "${glob_image_version}"
+    print_sep "${glob_SEP_LEVEL2}"
+}
+
+
+
+#-------------------------------------------------------------------------------------------------------------
+# Function : printIntalledImageInfo
+#-------------------------------------------------------------------------------------------------------------
+function printIntalledImageInfo {
+    print_sep "${glob_SEP_LEVEL2}"
+    
+    print_info "Images actuellement installées pour :" "${glob_image_name}"
+    
+    docker images "${glob_image_name}"
+    
+    print_sep "${glob_SEP_LEVEL2}"
+}
+
+
+
+
+#-------------------------------------------------------------------------------------------------------------
+# Function : removeTag
+# --------------------------------------------------
+# Paramètres :
+#   $1 : Nom du tag
+#-------------------------------------------------------------------------------------------------------------
+function removeTag {
+    print_sep "${glob_SEP_LEVEL2}"
+    
+    local local_tag_name="$1"
+    
+    print_info "${glob_INFO_RUNNING_CMD}" "docker rmi ${local_tag_name}"
+    
+    docker rmi "${local_tag_name}"
+    if [ $? -ne 0 ]; then
+        print_error "Erreur de suppression du tag :" "${local_tag_name}"
+    else
+        print_ok "Tag supprimé avec succès :" "${local_tag_name}"
+    fi
+    
+    print_sep "${glob_SEP_LEVEL2}"
+}
+
+
+
+
+#-------------------------------------------------------------------------------------------------------------
+# Function : build
+#-------------------------------------------------------------------------------------------------------------
+function build {
+    print_sep "${glob_SEP_LEVEL2}"
+    
+    print_info "${glob_INFO_RUNNING_CMD}" "docker build --force-rm=true -t ${glob_image_name}:${glob_image_version} ."
+    
+    docker build --force-rm=true -t ${glob_image_name}:${glob_image_version} .
+    if [ $? -ne 0 ]; then
+        print_error "Erreur de construction de l'image :" "${glob_image_name}:${glob_image_version}"
+        exit 1
+    else
+        print_ok "Image construite avec succès :" "${glob_image_name}:${glob_image_version}"
+        
+        glob_image_id=$(docker images -q ${glob_image_name}:${glob_image_version})
+        print_info "Image ID :" "${glob_image_id}"
+    fi
+    
+    print_sep "${glob_SEP_LEVEL2}"
+}
+
+
+
+
+#-------------------------------------------------------------------------------------------------------------
+# Function : replaceTagLatest
+#-------------------------------------------------------------------------------------------------------------
+function replaceTagLatest {
+    print_sep "${glob_SEP_LEVEL2}"
+    
+    print_info "${glob_INFO_RUNNING_CMD}" "docker tag ${glob_image_name}:${glob_image_version} ${glob_image_name}"
+    
+    docker tag ${glob_image_name}:${glob_image_version} ${glob_image_name}
+    if [ $? -ne 0 ]; then
+        print_error "Erreur de remplacement du tag :" "${glob_image_name}:latest"
+    else
+        print_ok "Tag mis à jour avec succès :" "${glob_image_name}:latest"
+    fi
+    
+    print_sep "${glob_SEP_LEVEL2}"
+}
+
+
+
+#-------------------------------------------------------------------------------------------------------------
+# Function : tagLatest
+#-------------------------------------------------------------------------------------------------------------
+function tagLatest {
+    
+    glob_image_latest_id=$(docker images -q ${glob_image_name}:latest)
+    
+    if [ "${glob_image_latest_id}" = "${glob_image_id}" ]; then
+        print_ok "Le tag 'latest' pointe également sur l'image :" "${glob_image_latest_id}"
+    else
+        if [ -z "${glob_image_latest_id}" ]; then
+            print_sep "${glob_SEP_LEVEL2}"
+            
+            print_info "${glob_INFO_RUNNING_CMD}" "docker tag ${glob_image_name}:${glob_image_version} ${glob_image_name}"
+            
+            docker tag ${glob_image_name}:${glob_image_version} ${glob_image_name}
+            if [ $? -ne 0 ]; then
+                print_error "Erreur de création du tag :" "${glob_image_name}:latest"
+            else
+                print_ok "Tag créé avec succès :" "${glob_image_name}:latest"
+            fi
+            
+            print_sep "${glob_SEP_LEVEL2}"
+        else
+            print_warn "Tag 'latest' déja existant et pointant sur l'image :" "${glob_image_latest_id}"
+        fi
+    fi
+}
+
+
+
+
+#-------------------------------------------------------------------------------------------------------------
+# Function : main
+# --------------------------------------------------
+# Parameters :
+#   $1 : Chemin vers le répertoire contenant le fichier Dockerfile
+#-------------------------------------------------------------------------------------------------------------
+function main {
+    glob_dockerfile_dir="$1"
+    
+    print_info "Répertoire du Dockerfile :" "${glob_dockerfile_dir}"
+    
+    cd "${glob_dockerfile_dir}"
+    glob_dockerfile_dir=$(pwd)
+    
+    readDockerfile "$1"
+    
+    printImageToBuildInfo
+    
+    # ===== glob_do_info_only : on affiche seulement les info est on sort
+    if [ ${glob_do_info_only} -eq 1 ]; then
+        printIntalledImageInfo
+        exit 0
+    fi
+    
+    # ===== glob_do_remove_image_current
+    if [ ${glob_do_remove_image_current} -eq 1 ]; then
+        removeTag "${glob_image_name}:${glob_image_version}"
+    fi
+    
+    # ===== glob_do_remove_image_latest
+    if [ ${glob_do_remove_image_latest} -eq 1 ]; then
+        removeTag "${glob_image_name}:latest"
+    fi
+    
+    
+    # ===== Build
+    build
+    
+    
+    # ===== Tag latest
+    if [ ${glob_do_replace_tag_latest} -eq 1 ]; then
+        replaceTagLatest
+    else
+        tagLatest
+    fi
+}
+
+
+
+
+
+# ============================================================================================================
+#   MAIN
+# ============================================================================================================
+
+print_sep "=================================================="
+print_sep "|     Script de construction d'image Docker      |"
+print_sep "=================================================="
+
+
+
+#-------------------------------------------------------------------------------------------------------------
+# Script parameters
+#-------------------------------------------------------------------------------------------------------------
+while [ "_$1" != "_" ]; do
+    case $1 in
+        -h | --help )   usage
+                        finalize
+                        exit 0
+                        ;;
+
+        --info )        glob_do_info_only=1
+                        ;;
+
+        -r | --replace-latest-tag )     glob_do_replace_tag_latest=1
+                                        ;;
+
+        -c | --remove-current-first )   glob_do_remove_image_current=1
+                                        ;;
+        -l | --remove-latest-first )    glob_do_remove_image_latest=1
+                                        ;;
+        -A | --remove-all-first )       glob_do_remove_image_current=1
+                                        glob_do_remove_image_latest=1
+                                        ;;
+
+        -* )            print_error "Mauvaise utilisation du script !"
+                        usage
+                        exit 1
+                        ;;
+
+        * )             break
+                        ;;
+    esac
+    shift
+done
+
+
+
+#-------------------------------------------------------------------------------------------------------------
+# Main program
+#-------------------------------------------------------------------------------------------------------------
+if [ ! -z "$1" ]; then
+    main "$1"
+else
+    print_error "Mauvaise utilisation du script !"
+    usage
+    exit 1
+fi
+
