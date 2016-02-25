@@ -1,0 +1,62 @@
+#!/bin/bash
+#-------------------------------------------------------------------------------------------------------------
+# Copyright (c) 2016 Loïc Guibert <lfdummy-devel@yahoo.fr>
+#-------------------------------------------------------------------------------------------------------------
+# This file is part of docker-utils.
+#
+# docker-utils is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#-------------------------------------------------------------------------------------------------------------
+# Object :
+#   bash completion file for the script : docker-build-image
+#
+#   This file provides completion of :
+#       - options
+#       - directories (Dockerfile directory path)
+#
+#   To enable the completions either:
+#       - copy or link this file in /etc/bash_completion.d folder
+#       or
+#       - source it in your ~/.bashrc file by adding this line after bash completion features are loaded :
+#           . <thisFileDirPath>/docker-build-image-completion
+#-------------------------------------------------------------------------------------------------------------
+
+
+_docker_build_image() {
+    local options=(
+        -h
+        --help
+        --info
+        -r
+        --replace-latest-tag
+        -c
+        --remove-current-first
+        -l
+        --remove-latest-first
+        -A
+        --remove-all-first
+    )
+    
+    case "$2" in
+        -*)
+            COMPREPLY=( $(compgen -W "${options[*]}" -- "$2") )
+            ;;
+        *)
+            COMPREPLY=()
+            ;;
+	esac
+    
+    return 0
+}
+
+complete -o dirnames -F _docker_build_image docker-build-image
