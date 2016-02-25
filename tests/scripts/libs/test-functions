@@ -35,7 +35,7 @@ __scripts_lib_base=$(readlink -f "${__scripts_base}/lib")
 # Init
 #-------------------------------------------------------------------------------------------------------------
 set -e
-source "${__scripts_lib_base}/functions.sh"
+source "${__scripts_lib_base}/functions"
 
 
 

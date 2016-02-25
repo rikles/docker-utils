@@ -12,8 +12,7 @@ Installation
 ------------
 To use the scripts, you have to add execution right to them :
 
-
-    chmod u+x scripts/*.sh
+    chmod u+x scripts/*
 
 
 If you want these scripts always available, you can :
@@ -39,7 +38,7 @@ It extracts image name/version from special labels in the `Dockerfile` :
 
 For more information, use the `--help` option :
 
-    docker-build-image.sh --help
+    docker-build-image --help
 
 
 

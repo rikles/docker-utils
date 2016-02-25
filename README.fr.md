@@ -12,8 +12,7 @@ Installation
 ------------
 Afin d'utiliser les scripts, vous devez y ajouter les droits d'exécution :
 
-
-    chmod u+x scripts/*.sh
+    chmod u+x scripts/*
 
 
 Afin d'avoir les scripts toujours disponibles, vous pouvez :
@@ -39,7 +38,7 @@ Il extrait le nom et la version de l'image à partir des labels spécifiques dan
 
 Pour plus de détail, veuillez vous utiliser l'option `--help` :
 
-    docker-build-image.sh --help
+    docker-build-image --help
 
 
 
