@@ -10,6 +10,8 @@ _Docker-utils_ est un ensemble d'outils pour _Docker_
 
 Installation
 ------------
+
+### Scripts
 Afin d'utiliser les scripts, vous devez y ajouter les droits d'exécution :
 
     chmod u+x scripts/*
@@ -20,6 +22,18 @@ Afin d'avoir les scripts toujours disponibles, vous pouvez :
   * créer des liens symboliques dans votre répertoire `~/bin`
   * ou ajouter le répertoire des scripts à la variable d'environnment `PATH`
 
+
+### Bash completion
+Il y a des fichiers de completion pour _bash_ dans le répertoire `etc/bash_completion.d`.
+
+Pour activer ces fichiers de completion, soit :
+
+  * copiez les ou faites un lien symbolique sur ces fichiers dans le répertoire `/etc/bash_completion.d`
+  * ou faites un `source` de ceux-ci dans votre fichier `~/.bashrc` après les lignes de chargement de la completion `bash` :
+
+    ```bash
+    source <repertoireDeFichiersDeCompletion>/*-completion
+    ```
 
 
 

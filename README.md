@@ -10,6 +10,8 @@ _Docker-utils_ a package of tools for _Docker_
 
 Installation
 ------------
+
+### Scripts
 To use the scripts, you have to add execution right to them :
 
     chmod u+x scripts/*
@@ -20,6 +22,18 @@ If you want these scripts always available, you can :
   * create symbolic links in your `~/bin` directory
   * or add the scripts directory to the `PATH` environnement variable
 
+
+### Bash completion
+There are _bash_ completion files in `etc/bash_completion.d` folder.
+
+To enable these completions either :
+
+  * copy or link the completion files in `/etc/bash_completion.d` directory
+  * or source them in your `~/.bashrc` file after bash completion features are loaded :
+
+    ```bash
+    source <completionFilesDir>/*-completion
+    ```
 
 
 
