@@ -347,7 +347,6 @@ print_sep "=================================================="
 while [ "_$1" != "_" ]; do
     case $1 in
         -h | --help )   usage
-                        finalize
                         exit 0
                         ;;
 
