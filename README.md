@@ -3,7 +3,7 @@ Docker-utils
 
 _Docker-utils_ a package of tools for _Docker_
 
-[https://www.docker.com]
+[_Docker_ web site][Docker]
 
 
 
@@ -31,14 +31,26 @@ Usage
 Script that help user in the build/tag docker image process.
 It extracts image name/version from special labels in the `Dockerfile` :
 
-        LABEL \
-            image_name="myRepo/myUser/myImage" \
-            version="1.0"
+```Dockerfile
+LABEL \
+    image_name="myRepo/myUser/myImage" \
+    version="1.0"
+```
 
 
 For more information, use the `--help` option :
 
     docker-build-image --help
+
+
+#### Example
+See `examples` folder, it contains a sample image `Dockerfile`.
+You can use it to test this script and its options.
+
+For example, to build the sample image :
+
+    docker-build-image examples/docker-build-image
+
 
 
 
@@ -58,6 +70,14 @@ Contributing
 
 License
 -------
-This script is under the _GNU General Public License version 3_ <http://www.gnu.org/licenses/>.
+This script is under the [_GNU General Public License version 3_][GnuGPL].
 
-See this file : `./COPYING`
+See this file : [`./COPYING`](./COPYING)
+
+
+
+
+
+
+[Docker]: https://www.docker.com
+[GnuGPL]: http://www.gnu.org/licenses/gpl.html
