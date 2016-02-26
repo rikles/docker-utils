@@ -1,6 +1,8 @@
 Docker-utils
 ============
 
+[_Version française_](./README.fr.md)
+
 _Docker-utils_ a package of tools for _Docker_
 
 [_Docker_ web site][Docker]
