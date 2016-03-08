@@ -95,7 +95,7 @@ function usage {
 Objet : Script d'aide à la construction d'image Docker
 
 Usage :
-    ${SCRIPT_NAME} [OPTIONS] <cheminRepDockerfile>
+    ${__script_name} [OPTIONS] <cheminRepDockerfile>
     
 
 Paramètres :
@@ -124,8 +124,8 @@ EOF_STR
 #-------------------------------------------------------------------------------------------------------------
 function readDockerfile {
     # ===== Test de awk
-    TEST_AWK=$(echo OKtest | awk '{ out = gensub(/(.*)test/, "test_\\1", "g", $1); print out }' -)
-    if [ $? -ne 0 -o "${TEST_AWK}" != "test_OK" ]; then
+    local test_awk=$(echo OKtest | awk '{ out = gensub(/(.*)test/, "test_\\1", "g", $1); print out }' -)
+    if [ $? -ne 0 -o "${test_awk}" != "test_OK" ]; then
         print_error "Votre version de awk ne prend par en charge la fonction :" "gensub" \
                     "    -> Vous pouvez par exemple installer : gawk"
     fi
